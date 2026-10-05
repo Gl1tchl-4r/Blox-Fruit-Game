@@ -1,0 +1,699 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+-- ค่าคงที่ Asset IDs
+local ASSETS = {
+    Mirror = {
+        Id = "rbxassetid://132878917806151",
+        RectOffset = Vector2.new(609, 153),
+        RectSize = Vector2.new(150, 150),
+        Name = "Mirror Fractal"
+    },
+    Valk = {
+        Id = "rbxassetid://71981840929411",
+        RectOffset = Vector2.new(1, 305),
+        RectSize = Vector2.new(150, 150),
+        Name = "Valkyrie Helm"
+    },
+    Lever = {
+        Id = "rbxassetid://123697092553533",
+        RectOffset = nil,
+        RectSize = nil,
+        Name = "Pull Lever"
+    },
+    CloseIcon = "rbxassetid://127503254560275"
+}
+
+-- ธีมสีและฟอนต์ถอดแบบจาก StatsRoot
+local THEME = {
+    -- สีทองหัวข้อ Header จาก StatsRoot UIGradient
+    GoldHeaderGradient = ColorSequence.new({
+        ColorSequenceKeypoint.new(0.000, Color3.fromRGB(255, 199, 29)),
+        ColorSequenceKeypoint.new(0.509, Color3.fromRGB(255, 239, 60)),
+        ColorSequenceKeypoint.new(1.000, Color3.fromRGB(255, 199, 29))
+    }),
+    -- สีปุ่มปิด Header (Close Button ต้นฉบับ StatsRoot)
+    BtnRed = Color3.fromRGB(255, 79, 79),
+    BtnRedBorder = Color3.fromRGB(131, 40, 40),
+    BtnRedHighlight = Color3.fromRGB(255, 112, 112),
+    -- พื้นหลังและกรอบถอดจากเกม
+    ContentBg = Color3.fromRGB(23, 23, 23),
+    FooterBg = Color3.fromRGB(0, 0, 0),
+    CardBg = Color3.fromRGB(18, 19, 24),
+    SubheaderBg = Color3.fromRGB(30, 32, 38),
+    -- สีสถานะไอเทม
+    Success = Color3.fromRGB(125, 253, 0),
+    Fail = Color3.fromRGB(255, 69, 52),
+    BgSuccess = Color3.fromRGB(20, 38, 24),
+    BgFail = Color3.fromRGB(38, 20, 24),
+    -- สีม่วง Fragment แท้ของ Blox Fruits
+    FragPurple = Color3.fromRGB(179, 123, 255),
+    -- Status Card Tint
+    StatusBlueFade = Color3.fromRGB(88, 138, 255),
+    -- ฟอนต์ประจำ Blox Fruits UI
+    MainFont = Enum.Font.Highway,
+    MainFontFace = Font.new("rbxasset://fonts/families/HighwayGothic.json", Enum.FontWeight.Bold)
+}
+
+local UIManager = {}
+UIManager.__index = UIManager
+
+function UIManager.new(customParent)
+    local self = setmetatable({}, UIManager)
+
+    -- เลือกลงใน gethui (ป้องกันตรวจจับ) หรือ PlayerGui
+    local parentTarget = customParent or (typeof(gethui) == "function" and gethui()) or LocalPlayer:WaitForChild("PlayerGui")
+
+    -- ลบ GUI เดิมหากเคยเปิดไว้
+    local oldGui = parentTarget:FindFirstChild("V4AutomationGui")
+    if oldGui then
+        oldGui:Destroy()
+    end
+
+    -- 1. ScreenGui หลัก
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "V4AutomationGui"
+    screenGui.IgnoreGuiInset = true
+    screenGui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.ResetOnSpawn = false
+
+    -- 2. พื้นหลัง Overlay เต็มจอ (มืดสนิท)
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(1, 0, 1, 0)
+    mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    mainFrame.BackgroundTransparency = 0
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Parent = screenGui
+
+    -- ==============================================================================
+    -- 2.1 ปุ่ม Toggle สำหรับเปิด-ปิด UI (ปุ่มลอยบนหน้าจอ ลากย้ายตำแหน่งได้)
+    -- ==============================================================================
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Name = "ToggleDashboardBtn"
+    toggleBtn.AnchorPoint = Vector2.new(0.5, 0)
+    toggleBtn.Size = UDim2.new(0, 120, 0, 34)
+    toggleBtn.Position = UDim2.new(0.5, 0, 0, 12)
+    toggleBtn.BackgroundColor3 = THEME.ContentBg
+    toggleBtn.BorderSizePixel = 0
+    toggleBtn.Text = ""
+    toggleBtn.AutoButtonColor = true
+    toggleBtn.ZIndex = 10
+    toggleBtn.Parent = screenGui
+
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(0.25, 0)
+    toggleCorner.Parent = toggleBtn
+
+    local toggleStroke = Instance.new("UIStroke")
+    toggleStroke.Color = Color3.fromRGB(255, 199, 29)
+    toggleStroke.Thickness = 1.5
+    toggleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    toggleStroke.Parent = toggleBtn
+
+    local toggleGradient = Instance.new("UIGradient")
+    toggleGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0.0, Color3.fromRGB(35, 36, 42)),
+        ColorSequenceKeypoint.new(1.0, Color3.fromRGB(18, 19, 23))
+    })
+    toggleGradient.Rotation = 90
+    toggleGradient.Parent = toggleBtn
+
+    local toggleLabel = Instance.new("TextLabel")
+    toggleLabel.Name = "Label"
+    toggleLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    toggleLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    toggleLabel.Size = UDim2.new(0.9, 0, 0.7, 0)
+    toggleLabel.BackgroundTransparency = 1
+    toggleLabel.Text = "Toggle Ui"
+    toggleLabel.TextColor3 = Color3.fromRGB(255, 220, 60)
+    toggleLabel.FontFace = THEME.MainFontFace
+    toggleLabel.TextScaled = true
+    toggleLabel.ZIndex = 11
+    toggleLabel.Parent = toggleBtn
+
+    local toggleTextStroke = Instance.new("UIStroke")
+    toggleTextStroke.Color = Color3.fromRGB(0, 0, 0)
+    toggleTextStroke.Thickness = 1.2
+    toggleTextStroke.Parent = toggleLabel
+
+    -- รองรับการลากย้ายปุ่ม (Draggable) และการคลิกสลับ UI
+    local isDragging = false
+    local dragInput, dragStartPos, startPos
+    local dragThreshold = 5
+    local movedDistance = 0
+
+    toggleBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = true
+            dragStartPos = input.Position
+            startPos = toggleBtn.Position
+            movedDistance = 0
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    isDragging = false
+                end
+            end)
+        end
+    end)
+
+    toggleBtn.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and isDragging then
+            local delta = input.Position - dragStartPos
+            movedDistance = delta.Magnitude
+            toggleBtn.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    toggleBtn.Activated:Connect(function()
+        if movedDistance < dragThreshold then
+            self:Toggle()
+        end
+    end)
+
+    -- 3. กรอบเมนูหลัก (ถอดแบบจาก StatsRoot.Frame.Menu 1:1)
+    local menu = Instance.new("Frame")
+    menu.Name = "Menu"
+    menu.Size = UDim2.new(0.850000024, 0, 0.850000024, 0)
+    menu.Position = UDim2.new(0.5, 0, 0.5, 0)
+    menu.AnchorPoint = Vector2.new(0.5, 0.5)
+    menu.BackgroundTransparency = 1
+    menu.BorderSizePixel = 0
+    menu.Parent = mainFrame
+
+    -- ตัวจำกัดขนาดและอัตราส่วน 1.300 เหมือน StatsRoot ต้นฉบับ
+    local menuSizeConstraint = Instance.new("UISizeConstraint")
+    menuSizeConstraint.MaxSize = Vector2.new(600, 600)
+    menuSizeConstraint.MinSize = Vector2.new(0, 0)
+    menuSizeConstraint.Parent = menu
+
+    local menuAspect = Instance.new("UIAspectRatioConstraint")
+    menuAspect.AspectRatio = 1.300
+    menuAspect.DominantAxis = Enum.DominantAxis.Width
+    menuAspect.Parent = menu
+
+    -- ==============================================================================
+    -- 4. หัวข้อ Header (StatsRoot Title + UIGradient + 3D Text "Dashboard") - ขอบมน 0.1
+    -- ==============================================================================
+    local titleFrame = Instance.new("Frame")
+    titleFrame.Name = "Title"
+    titleFrame.Size = UDim2.new(1, 0, 0.128582999, 0)
+    titleFrame.Position = UDim2.new(0, 0, 0, 0)
+    titleFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    titleFrame.BorderSizePixel = 0
+    titleFrame.ZIndex = 2
+    titleFrame.Parent = menu
+
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0.1, 0)
+    titleCorner.Parent = titleFrame
+
+    local titleStroke = Instance.new("UIStroke")
+    titleStroke.Color = Color3.fromRGB(0, 0, 0)
+    titleStroke.Thickness = 2
+    titleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+    titleStroke.Parent = titleFrame
+
+    local titleGradient = Instance.new("UIGradient")
+    titleGradient.Color = THEME.GoldHeaderGradient
+    titleGradient.Rotation = 0
+    titleGradient.Parent = titleFrame
+
+    -- Title 3D Text: "Dashboard" (Shadow layer + Main layer)
+    local titleShadow = Instance.new("TextLabel")
+    titleShadow.Name = "TitleShadow"
+    titleShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+    titleShadow.Position = UDim2.new(0.5, 0, 0.55, 0)
+    titleShadow.Size = UDim2.new(0.8, 0, 0.8, 0)
+    titleShadow.BackgroundTransparency = 1
+    titleShadow.Text = "Dashboard"
+    titleShadow.TextColor3 = Color3.fromRGB(0, 0, 0)
+    titleShadow.FontFace = THEME.MainFontFace
+    titleShadow.TextScaled = true
+    titleShadow.ZIndex = 3
+    titleShadow.Parent = titleFrame
+
+    local shadowStroke = Instance.new("UIStroke")
+    shadowStroke.Color = Color3.fromRGB(0, 0, 0)
+    shadowStroke.Thickness = 2
+    shadowStroke.Parent = titleShadow
+
+    local titleMain = Instance.new("TextLabel")
+    titleMain.Name = "TitleMain"
+    titleMain.AnchorPoint = Vector2.new(0.5, 0.5)
+    titleMain.Position = UDim2.new(0.5, 0, 0.45, 0)
+    titleMain.Size = UDim2.new(1, 0, 1, 0)
+    titleMain.BackgroundTransparency = 1
+    titleMain.Text = "Dashboard"
+    titleMain.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleMain.FontFace = THEME.MainFontFace
+    titleMain.TextScaled = true
+    titleMain.ZIndex = 4
+    titleMain.Parent = titleShadow
+
+    local mainStroke = Instance.new("UIStroke")
+    mainStroke.Color = Color3.fromRGB(0, 0, 0)
+    mainStroke.Thickness = 2
+    mainStroke.Parent = titleMain
+
+    -- ==============================================================================
+    -- 5. กล่องเนื้อหา Content (ถอดแบบจาก StatsRoot.Frame.Menu.Content)
+    -- ==============================================================================
+    local content = Instance.new("Frame")
+    content.Name = "Content"
+    content.Position = UDim2.new(0, 0, 0.128582999, 0)
+    content.Size = UDim2.new(1, 0, 0.872533023, 0)
+    content.BackgroundColor3 = THEME.ContentBg
+    content.BackgroundTransparency = 0.1
+    content.BorderSizePixel = 0
+    content.Parent = menu
+
+    -- ------------------------------------------------------------------------------
+    -- (A) Subheader: แสดง Username และ Race สมมาตรสองฝั่ง (Bilateral Symmetry)
+    -- ------------------------------------------------------------------------------
+    local subheader = Instance.new("Frame")
+    subheader.Name = "Subheader"
+    subheader.AnchorPoint = Vector2.new(0.5, 0)
+    subheader.Position = UDim2.new(0.5, 0, 0.02, 0)
+    subheader.Size = UDim2.new(0.965, 0, 0.085, 0)
+    subheader.BackgroundColor3 = THEME.SubheaderBg
+    subheader.BackgroundTransparency = 0.35
+    subheader.BorderSizePixel = 0
+    subheader.Parent = content
+
+    local subheaderCorner = Instance.new("UICorner")
+    subheaderCorner.CornerRadius = UDim.new(0.2, 0)
+    subheaderCorner.Parent = subheader
+
+    local subheaderStroke = Instance.new("UIStroke")
+    subheaderStroke.Color = Color3.fromRGB(0, 0, 0)
+    subheaderStroke.Thickness = 1
+    subheaderStroke.Parent = subheader
+
+    -- Username ชิดฝั่งซ้าย เว้นขอบสมมาตร 2.5%
+    local userLabel = Instance.new("TextLabel")
+    userLabel.Name = "UsernameLabel"
+    userLabel.AnchorPoint = Vector2.new(0, 0.5)
+    userLabel.Position = UDim2.new(0.025, 0, 0.5, 0)
+    userLabel.Size = UDim2.new(0.46, 0, 0.75, 0)
+    userLabel.BackgroundTransparency = 1
+    userLabel.Text = LocalPlayer.Name
+    userLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    userLabel.FontFace = THEME.MainFontFace
+    userLabel.TextScaled = true
+    userLabel.TextXAlignment = Enum.TextXAlignment.Left
+    userLabel.Parent = subheader
+
+    local userStroke = Instance.new("UIStroke")
+    userStroke.Color = Color3.fromRGB(0, 0, 0)
+    userStroke.Thickness = 1.2
+    userStroke.Parent = userLabel
+
+    -- Race Info ชิดฝั่งขวา เว้นขอบสมมาตร 2.5%
+    local raceLabel = Instance.new("TextLabel")
+    raceLabel.Name = "RaceLabel"
+    raceLabel.AnchorPoint = Vector2.new(1, 0.5)
+    raceLabel.Position = UDim2.new(0.975, 0, 0.5, 0)
+    raceLabel.Size = UDim2.new(0.48, 0, 0.75, 0)
+    raceLabel.BackgroundTransparency = 1
+    raceLabel.Text = "Race: Human V3 [10]"
+    raceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    raceLabel.FontFace = THEME.MainFontFace
+    raceLabel.TextScaled = true
+    raceLabel.TextXAlignment = Enum.TextXAlignment.Right
+    raceLabel.Parent = subheader
+
+    local raceStroke = Instance.new("UIStroke")
+    raceStroke.Color = Color3.fromRGB(0, 0, 0)
+    raceStroke.Thickness = 1.2
+    raceStroke.Parent = raceLabel
+
+    -- ------------------------------------------------------------------------------
+    -- (B) Status Card: แสดงข้อความ Status ในสไตล์การ์ดสเตตัส (Melee/Defense)
+    -- ------------------------------------------------------------------------------
+    local statusCard = Instance.new("Frame")
+    statusCard.Name = "StatusCard"
+    statusCard.AnchorPoint = Vector2.new(0.5, 0)
+    statusCard.Position = UDim2.new(0.5, 0, 0.125, 0)
+    statusCard.Size = UDim2.new(0.965, 0, 0.135, 0)
+    statusCard.BackgroundColor3 = THEME.ContentBg
+    statusCard.BackgroundTransparency = 0.1
+    statusCard.BorderSizePixel = 0
+    statusCard.Parent = content
+
+    local statusCorner = Instance.new("UICorner")
+    statusCorner.CornerRadius = UDim.new(0.07, 0)
+    statusCorner.Parent = statusCard
+
+    local statusStroke = Instance.new("UIStroke")
+    statusStroke.Color = Color3.fromRGB(0, 0, 0)
+    statusStroke.Thickness = 1
+    statusStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    statusStroke.Parent = statusCard
+
+    local statusFade = Instance.new("Frame")
+    statusFade.Name = "ColorFade"
+    statusFade.AnchorPoint = Vector2.new(0.5, 0.5)
+    statusFade.Position = UDim2.new(0.5, 0, 0.5, 0)
+    statusFade.Size = UDim2.new(1, 0, 1, 0)
+    statusFade.BackgroundColor3 = THEME.StatusBlueFade
+    statusFade.BackgroundTransparency = 0.82
+    statusFade.BorderSizePixel = 0
+    statusFade.Parent = statusCard
+
+    local statusFadeCorner = Instance.new("UICorner")
+    statusFadeCorner.CornerRadius = UDim.new(0.07, 0)
+    statusFadeCorner.Parent = statusFade
+
+    local statusTextLabel = Instance.new("TextLabel")
+    statusTextLabel.Name = "StatusText"
+    statusTextLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    statusTextLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    statusTextLabel.Size = UDim2.new(0.94, 0, 0.75, 0)
+    statusTextLabel.BackgroundTransparency = 1
+    statusTextLabel.Text = "Status: Initializing..."
+    statusTextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    statusTextLabel.FontFace = THEME.MainFontFace
+    statusTextLabel.TextScaled = true
+    statusTextLabel.TextWrapped = true
+    statusTextLabel.Parent = statusCard
+
+    local statusSizeConstraint = Instance.new("UITextSizeConstraint")
+    statusSizeConstraint.MaxTextSize = 18
+    statusSizeConstraint.MinTextSize = 11
+    statusSizeConstraint.Parent = statusTextLabel
+
+    local statusTextStroke = Instance.new("UIStroke")
+    statusTextStroke.Color = Color3.fromRGB(0, 0, 0)
+    statusTextStroke.Thickness = 1.5
+    statusTextStroke.Parent = statusTextLabel
+
+    -- ------------------------------------------------------------------------------
+    -- (C) Items Grid: แสดง Mirror, Valk, Lever เรียงกันในกรอบสมมาตร
+    -- ------------------------------------------------------------------------------
+    local itemsBox = Instance.new("Frame")
+    itemsBox.Name = "ItemsBox"
+    itemsBox.AnchorPoint = Vector2.new(0.5, 0)
+    itemsBox.Position = UDim2.new(0.5, 0, 0.28, 0)
+    itemsBox.Size = UDim2.new(0.965, 0, 0.565, 0)
+    itemsBox.BackgroundColor3 = THEME.CardBg
+    itemsBox.BackgroundTransparency = 0.3
+    itemsBox.BorderSizePixel = 0
+    itemsBox.Parent = content
+
+    local itemsBoxCorner = Instance.new("UICorner")
+    itemsBoxCorner.CornerRadius = UDim.new(0.07, 0)
+    itemsBoxCorner.Parent = itemsBox
+
+    local itemsBoxStroke = Instance.new("UIStroke")
+    itemsBoxStroke.Color = Color3.fromRGB(0, 0, 0)
+    itemsBoxStroke.Thickness = 1
+    itemsBoxStroke.Parent = itemsBox
+
+    local itemsLayout = Instance.new("UIListLayout")
+    itemsLayout.FillDirection = Enum.FillDirection.Horizontal
+    itemsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    itemsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    itemsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    itemsLayout.Padding = UDim.new(0.025, 0)
+    itemsLayout.Parent = itemsBox
+
+    local function createItemCard(name, titleText, iconId, rectOffset, rectSize, isUnlocked, order)
+        local card = Instance.new("Frame")
+        card.Name = name .. "Card"
+        card.Size = UDim2.new(0.31, 0, 0.88, 0)
+        card.BackgroundColor3 = isUnlocked and THEME.BgSuccess or THEME.BgFail
+        card.BackgroundTransparency = 0.2
+        card.BorderSizePixel = 0
+        card.LayoutOrder = order
+        card.Parent = itemsBox
+
+        local cardCorner = Instance.new("UICorner")
+        cardCorner.CornerRadius = UDim.new(0.07, 0)
+        cardCorner.Parent = card
+
+        local cardStroke = Instance.new("UIStroke")
+        cardStroke.Name = "CardStroke"
+        cardStroke.Color = isUnlocked and THEME.Success or THEME.Fail
+        cardStroke.Thickness = 1.5
+        cardStroke.Parent = card
+
+        local cardList = Instance.new("UIListLayout")
+        cardList.FillDirection = Enum.FillDirection.Vertical
+        cardList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        cardList.VerticalAlignment = Enum.VerticalAlignment.Center
+        cardList.SortOrder = Enum.SortOrder.LayoutOrder
+        cardList.Padding = UDim.new(0.06, 0)
+        cardList.Parent = card
+
+        -- Icon
+        local icon = Instance.new("ImageLabel")
+        icon.Name = "Icon"
+        icon.Size = UDim2.new(0.55, 0, 0.55, 0)
+        icon.BackgroundTransparency = 1
+        icon.Image = iconId
+        icon.LayoutOrder = 1
+        if rectOffset then icon.ImageRectOffset = rectOffset end
+        if rectSize then icon.ImageRectSize = rectSize end
+        icon.ScaleType = Enum.ScaleType.Fit
+        icon.ImageTransparency = isUnlocked and 0 or 0.45
+        icon.Parent = card
+
+        local iconAspect = Instance.new("UIAspectRatioConstraint")
+        iconAspect.AspectRatio = 1
+        iconAspect.Parent = icon
+
+        -- Title
+        local label = Instance.new("TextLabel")
+        label.Name = "ItemName"
+        label.Size = UDim2.new(0.9, 0, 0.22, 0)
+        label.BackgroundTransparency = 1
+        label.Text = titleText
+        label.TextColor3 = isUnlocked and THEME.Success or Color3.fromRGB(220, 220, 220)
+        label.FontFace = THEME.MainFontFace
+        label.TextScaled = true
+        label.LayoutOrder = 2
+        label.Parent = card
+
+        local labelStroke = Instance.new("UIStroke")
+        labelStroke.Color = Color3.fromRGB(0, 0, 0)
+        labelStroke.Thickness = 1.2
+        labelStroke.Parent = label
+
+        return {
+            Card = card,
+            Icon = icon,
+            Stroke = cardStroke,
+            Label = label
+        }
+    end
+
+    local mirrorItem = createItemCard("Mirror", ASSETS.Mirror.Name, ASSETS.Mirror.Id, ASSETS.Mirror.RectOffset, ASSETS.Mirror.RectSize, false, 1)
+    local valkItem   = createItemCard("Valk",   ASSETS.Valk.Name,   ASSETS.Valk.Id,   ASSETS.Valk.RectOffset,   ASSETS.Valk.RectSize,   false, 2)
+    local leverItem  = createItemCard("Lever",  ASSETS.Lever.Name,  ASSETS.Lever.Id,  ASSETS.Lever.RectOffset,  ASSETS.Lever.RectSize,  false, 3)
+
+    -- ==============================================================================
+    -- 6. แถบ Footer (ถอดแบบจาก StatsRoot 1:1, Fragments สีม่วง ƒ, ไม่มีปุ่ม Close)
+    -- ==============================================================================
+    local footer = Instance.new("Frame")
+    footer.Name = "Footer"
+    footer.AnchorPoint = Vector2.new(0, 1)
+    footer.Position = UDim2.new(0, 0, 1, 0)
+    footer.Size = UDim2.new(1, 0, 0.122229002, 0)
+    footer.BackgroundColor3 = THEME.FooterBg
+    footer.BackgroundTransparency = 0.1
+    footer.BorderSizePixel = 0
+    footer.Parent = content
+
+    local footerStroke = Instance.new("UIStroke")
+    footerStroke.Color = Color3.fromRGB(0, 0, 0)
+    footerStroke.Thickness = 2
+    footerStroke.Parent = footer
+
+    -- Fragments แสดงตรงตำแหน่ง "Stat Points: 63" ด้วยสีม่วงและสัญลักษณ์ ƒ
+    local fragLabel = Instance.new("TextLabel")
+    fragLabel.Name = "StatPoints"
+    fragLabel.AnchorPoint = Vector2.new(0, 0.5)
+    fragLabel.Position = UDim2.new(0.0175928995, 0, 0.5, 0)
+    fragLabel.Size = UDim2.new(0.48, 0, 0.600000024, 0)
+    fragLabel.BackgroundTransparency = 1
+    fragLabel.Text = "ƒ 0"
+    fragLabel.TextColor3 = THEME.FragPurple
+    fragLabel.FontFace = THEME.MainFontFace
+    fragLabel.TextScaled = true
+    fragLabel.TextXAlignment = Enum.TextXAlignment.Left
+    fragLabel.Parent = footer
+
+    local fragStroke = Instance.new("UIStroke")
+    fragStroke.Color = Color3.fromRGB(0, 0, 0)
+    fragStroke.Thickness = 1.5
+    fragStroke.Parent = fragLabel
+
+    -- ข้อความแนะนำการสลับหน้าจอมุมขวาของ Footer (จัดวางสมมาตรที่ระยะ 0.9824)
+    local hintLabel = Instance.new("TextLabel")
+    hintLabel.Name = "HintLabel"
+    hintLabel.AnchorPoint = Vector2.new(1, 0.5)
+    hintLabel.Position = UDim2.new(0.9824071, 0, 0.5, 0)
+    hintLabel.Size = UDim2.new(0.45, 0, 0.55, 0)
+    hintLabel.BackgroundTransparency = 1
+    hintLabel.Text = "[Press M to Toggle]"
+    hintLabel.TextColor3 = Color3.fromRGB(180, 180, 190)
+    hintLabel.FontFace = THEME.MainFontFace
+    hintLabel.TextScaled = true
+    hintLabel.TextXAlignment = Enum.TextXAlignment.Right
+    hintLabel.Parent = footer
+
+    local hintStroke = Instance.new("UIStroke")
+    hintStroke.Color = Color3.fromRGB(0, 0, 0)
+    hintStroke.Thickness = 1.2
+    hintStroke.Parent = hintLabel
+
+    -- แนบ ScreenGui เข้าสู่เป้าหมาย
+    screenGui.Parent = parentTarget
+
+    -- บันทึก References
+    self.ScreenGui = screenGui
+    self.MainFrame = mainFrame
+    self.ToggleButton = toggleBtn
+    self.Menu = menu
+    self.TitleFrame = titleFrame
+    self.ContentFrame = content
+    self.FooterFrame = footer
+    self.UserLabel = userLabel
+    self.RaceLabel = raceLabel
+    self.StatusLabel = statusTextLabel
+    self.FragLabel = fragLabel
+
+    self.MirrorItem = mirrorItem
+    self.ValkItem = valkItem
+    self.LeverItem = leverItem
+
+    -- Backwards Compatibility References
+    self.MirrorLabel = mirrorItem.Card
+    self.ValkLabel = valkItem.Card
+    self.LeverLabel = leverItem.Card
+
+    self.IsVisible = true
+
+    -- คีย์ลัด Toggle UI ด้วยปุ่ม M
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and input.KeyCode == Enum.KeyCode.M then
+            self:Toggle()
+        end
+    end)
+
+    return self
+end
+
+-- อัปเดตสถานะ Status (Melee/Defense Card position)
+function UIManager:UpdateStatus(statusText)
+    if self.StatusLabel and self.StatusLabel.Parent then
+        self.StatusLabel.Text = "Status: " .. tostring(statusText or "Idle")
+    end
+end
+
+-- อัปเดตข้อมูลผู้เล่นและเผ่า: Username (ฝั่งซ้าย) และ Race (ฝั่งขวา) ให้สมมาตร
+function UIManager:UpdatePlayerInfo(playerName, raceName, raceVer, raceTier)
+    local user = tostring(playerName or LocalPlayer.Name)
+    local race = tostring(raceName or "Human")
+    local ver = tostring(raceVer or "1")
+    local tier = tostring(raceTier or "0")
+
+    if self.UserLabel and self.UserLabel.Parent then
+        self.UserLabel.Text = user
+    end
+    if self.RaceLabel and self.RaceLabel.Parent then
+        self.RaceLabel.Text = string.format("Race: %s V%s [%s]", race, ver, tier)
+    end
+end
+
+-- อัปเดต Fragments ใน Footer ตรง "Stat Points: 63" ด้วยสีม่วงและตัว ƒ
+function UIManager:UpdateFragments(fragCount)
+    if self.FragLabel and self.FragLabel.Parent then
+        local formattedFrags = tostring(fragCount or 0)
+        formattedFrags = formattedFrags:reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
+        self.FragLabel.Text = "ƒ " .. formattedFrags
+    end
+end
+
+-- อัปเดตสถานะไอเทม (Mirror, Valk, Lever)
+function UIManager:UpdateItems(data, valkArg, leverArg)
+    local mirrorState, valkState, leverState
+    if type(data) == "table" then
+        mirrorState = data.Mirror
+        valkState = data.Valk
+        leverState = data.Lever
+    else
+        mirrorState = data
+        valkState = valkArg
+        leverState = leverArg
+    end
+
+    local function applyVisualState(itemWidget, isCompleted)
+        if not itemWidget or isCompleted == nil then return end
+
+        local targetBorderColor = isCompleted and THEME.Success or THEME.Fail
+        local targetBgColor     = isCompleted and THEME.BgSuccess or THEME.BgFail
+        local targetAlpha       = isCompleted and 0 or 0.45
+        local targetLabelColor  = isCompleted and THEME.Success or Color3.fromRGB(220, 220, 220)
+
+        if itemWidget.Stroke then
+            itemWidget.Stroke.Color = targetBorderColor
+        end
+        if itemWidget.Card then
+            itemWidget.Card.BackgroundColor3 = targetBgColor
+        end
+        if itemWidget.Icon then
+            itemWidget.Icon.ImageTransparency = targetAlpha
+        end
+        if itemWidget.Label then
+            itemWidget.Label.TextColor3 = targetLabelColor
+        end
+    end
+
+    if mirrorState ~= nil then
+        applyVisualState(self.MirrorItem, mirrorState)
+    end
+    if valkState ~= nil then
+        applyVisualState(self.ValkItem, valkState)
+    end
+    if leverState ~= nil then
+        applyVisualState(self.LeverItem, leverState)
+    end
+end
+
+function UIManager:SetVisible(visible)
+    self.IsVisible = visible
+    if self.MainFrame then
+        self.MainFrame.Visible = visible
+    end
+end
+
+function UIManager:Toggle()
+    self:SetVisible(not self.IsVisible)
+end
+
+function UIManager:Destroy()
+    if self.ScreenGui then
+        self.ScreenGui:Destroy()
+        self.ScreenGui = nil
+    end
+end
+
+return UIManager
