@@ -616,7 +616,7 @@ function UIManager:UpdatePlayerInfo(playerName, raceName, raceVer, raceTier)
     local tier = tostring(raceTier or "0")
 
     if self.UserLabel and self.UserLabel.Parent then
-        self.UserLabel.Text = user
+        self.UserLabel.Text = string.format("Username: %s", user)
     end
     if self.RaceLabel and self.RaceLabel.Parent then
         self.RaceLabel.Text = string.format("Race: %s V%s [%s]", race, ver, tier)
