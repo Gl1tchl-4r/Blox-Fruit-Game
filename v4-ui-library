@@ -1,5 +1,7 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
 -- ค่าคงที่ Asset IDs
@@ -284,6 +286,27 @@ function UIManager.new(customParent)
     content.BorderSizePixel = 0
     content.Parent = menu
 
+    -- คอนเทนเนอร์สำหรับจัดการหลายหน้า (Pages Container)
+    local pagesContainer = Instance.new("Frame")
+    pagesContainer.Name = "PagesContainer"
+    pagesContainer.Position = UDim2.new(0, 0, 0, 0)
+    pagesContainer.Size = UDim2.new(1, 0, 1, 0)
+    pagesContainer.BackgroundTransparency = 1
+    pagesContainer.BorderSizePixel = 0
+    pagesContainer.Parent = content
+
+    -- ==============================================================================
+    -- หน้าที่ 1: Dashboard (หน้าเริ่มต้น)
+    -- ==============================================================================
+    local pageDashboard = Instance.new("Frame")
+    pageDashboard.Name = "Page_Dashboard"
+    pageDashboard.Position = UDim2.new(0, 0, 0, 0)
+    pageDashboard.Size = UDim2.new(1, 0, 1, 0)
+    pageDashboard.BackgroundTransparency = 1
+    pageDashboard.BorderSizePixel = 0
+    pageDashboard.Visible = true
+    pageDashboard.Parent = pagesContainer
+
     -- ------------------------------------------------------------------------------
     -- (A) Subheader: แสดง Username และ Race สมมาตรสองฝั่ง (Bilateral Symmetry)
     -- ------------------------------------------------------------------------------
@@ -295,7 +318,7 @@ function UIManager.new(customParent)
     subheader.BackgroundColor3 = THEME.SubheaderBg
     subheader.BackgroundTransparency = 0.35
     subheader.BorderSizePixel = 0
-    subheader.Parent = content
+    subheader.Parent = pageDashboard
 
     local subheaderCorner = Instance.new("UICorner")
     subheaderCorner.CornerRadius = UDim.new(0.2, 0)
@@ -355,7 +378,7 @@ function UIManager.new(customParent)
     statusCard.BackgroundColor3 = THEME.ContentBg
     statusCard.BackgroundTransparency = 0.1
     statusCard.BorderSizePixel = 0
-    statusCard.Parent = content
+    statusCard.Parent = pageDashboard
 
     local statusCorner = Instance.new("UICorner")
     statusCorner.CornerRadius = UDim.new(0.07, 0)
@@ -415,7 +438,7 @@ function UIManager.new(customParent)
     itemsBox.BackgroundColor3 = THEME.CardBg
     itemsBox.BackgroundTransparency = 0.3
     itemsBox.BorderSizePixel = 0
-    itemsBox.Parent = content
+    itemsBox.Parent = pageDashboard
 
     local itemsBoxCorner = Instance.new("UICorner")
     itemsBoxCorner.CornerRadius = UDim.new(0.07, 0)
@@ -509,6 +532,457 @@ function UIManager.new(customParent)
     local leverItem  = createItemCard("Lever",  ASSETS.Lever.Name,  ASSETS.Lever.Id,  ASSETS.Lever.RectOffset,  ASSETS.Lever.RectSize,  false, 3)
 
     -- ==============================================================================
+    -- หน้าที่ 2: Server & Hop Manager (Job ID, Copy/Join, Dropdown Full Moon / Mirage)
+    -- ==============================================================================
+    local pageServer = Instance.new("Frame")
+    pageServer.Name = "Page_ServerManager"
+    pageServer.Position = UDim2.new(0, 0, 0, 0)
+    pageServer.Size = UDim2.new(1, 0, 1, 0)
+    pageServer.BackgroundTransparency = 1
+    pageServer.BorderSizePixel = 0
+    pageServer.Visible = false
+    pageServer.Parent = pagesContainer
+
+    -- ------------------------------------------------------------------------------
+    -- (A) Card 1: Job ID Manager (กล่องใส่ Job ID, ปุ่ม Copy Job ID, ปุ่ม Join Job ID)
+    -- ------------------------------------------------------------------------------
+    local jobIdCard = Instance.new("Frame")
+    jobIdCard.Name = "JobIdCard"
+    jobIdCard.AnchorPoint = Vector2.new(0.5, 0)
+    jobIdCard.Position = UDim2.new(0.5, 0, 0.02, 0)
+    jobIdCard.Size = UDim2.new(0.965, 0, 0.40, 0)
+    jobIdCard.BackgroundColor3 = THEME.CardBg
+    jobIdCard.BackgroundTransparency = 0.2
+    jobIdCard.BorderSizePixel = 0
+    jobIdCard.Parent = pageServer
+
+    local jobIdCardCorner = Instance.new("UICorner")
+    jobIdCardCorner.CornerRadius = UDim.new(0.07, 0)
+    jobIdCardCorner.Parent = jobIdCard
+
+    local jobIdCardStroke = Instance.new("UIStroke")
+    jobIdCardStroke.Color = Color3.fromRGB(0, 0, 0)
+    jobIdCardStroke.Thickness = 1
+    jobIdCardStroke.Parent = jobIdCard
+
+    local jobIdHeader = Instance.new("TextLabel")
+    jobIdHeader.Name = "HeaderLabel"
+    jobIdHeader.AnchorPoint = Vector2.new(0, 0.5)
+    jobIdHeader.Position = UDim2.new(0.04, 0, 0.16, 0)
+    jobIdHeader.Size = UDim2.new(0.92, 0, 0.22, 0)
+    jobIdHeader.BackgroundTransparency = 1
+    jobIdHeader.Text = "Job ID Manager"
+    jobIdHeader.TextColor3 = Color3.fromRGB(255, 220, 60)
+    jobIdHeader.FontFace = THEME.MainFontFace
+    jobIdHeader.TextScaled = true
+    jobIdHeader.TextXAlignment = Enum.TextXAlignment.Left
+    jobIdHeader.Parent = jobIdCard
+
+    local jobIdHeaderStroke = Instance.new("UIStroke")
+    jobIdHeaderStroke.Color = Color3.fromRGB(0, 0, 0)
+    jobIdHeaderStroke.Thickness = 1.2
+    jobIdHeaderStroke.Parent = jobIdHeader
+
+    -- กล่องใส่ Job ID (TextBox)
+    local jobIdInput = Instance.new("TextBox")
+    jobIdInput.Name = "JobIdInputBox"
+    jobIdInput.AnchorPoint = Vector2.new(0.5, 0.5)
+    jobIdInput.Position = UDim2.new(0.5, 0, 0.47, 0)
+    jobIdInput.Size = UDim2.new(0.92, 0, 0.28, 0)
+    jobIdInput.BackgroundColor3 = THEME.ContentBg
+    jobIdInput.BackgroundTransparency = 0.1
+    jobIdInput.BorderSizePixel = 0
+    jobIdInput.Text = tostring(game.JobId or "")
+    jobIdInput.PlaceholderText = "Paste or enter Job ID here..."
+    jobIdInput.PlaceholderColor3 = Color3.fromRGB(130, 130, 140)
+    jobIdInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    jobIdInput.FontFace = THEME.MainFontFace
+    jobIdInput.TextScaled = true
+    jobIdInput.ClearTextOnFocus = false
+    jobIdInput.Parent = jobIdCard
+
+    local jobIdInputCorner = Instance.new("UICorner")
+    jobIdInputCorner.CornerRadius = UDim.new(0.2, 0)
+    jobIdInputCorner.Parent = jobIdInput
+
+    local jobIdInputStroke = Instance.new("UIStroke")
+    jobIdInputStroke.Color = Color3.fromRGB(75, 75, 85)
+    jobIdInputStroke.Thickness = 1.2
+    jobIdInputStroke.Parent = jobIdInput
+
+    -- แถวปุ่ม (Copy Job ID & Join Job ID)
+    local jobBtnRow = Instance.new("Frame")
+    jobBtnRow.Name = "ButtonRow"
+    jobBtnRow.AnchorPoint = Vector2.new(0.5, 0.5)
+    jobBtnRow.Position = UDim2.new(0.5, 0, 0.79, 0)
+    jobBtnRow.Size = UDim2.new(0.92, 0, 0.26, 0)
+    jobBtnRow.BackgroundTransparency = 1
+    jobBtnRow.BorderSizePixel = 0
+    jobBtnRow.Parent = jobIdCard
+
+    -- ปุ่ม Copy Job ID
+    local copyBtn = Instance.new("TextButton")
+    copyBtn.Name = "CopyJobBtn"
+    copyBtn.Position = UDim2.new(0, 0, 0, 0)
+    copyBtn.Size = UDim2.new(0.485, 0, 1, 0)
+    copyBtn.BackgroundColor3 = Color3.fromRGB(30, 32, 40)
+    copyBtn.BorderSizePixel = 0
+    copyBtn.AutoButtonColor = true
+    copyBtn.Text = ""
+    copyBtn.Parent = jobBtnRow
+
+    local copyBtnCorner = Instance.new("UICorner")
+    copyBtnCorner.CornerRadius = UDim.new(0.2, 0)
+    copyBtnCorner.Parent = copyBtn
+
+    local copyBtnStroke = Instance.new("UIStroke")
+    copyBtnStroke.Color = Color3.fromRGB(255, 199, 29)
+    copyBtnStroke.Thickness = 1.2
+    copyBtnStroke.Parent = copyBtn
+
+    local copyBtnLabel = Instance.new("TextLabel")
+    copyBtnLabel.Name = "Label"
+    copyBtnLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    copyBtnLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    copyBtnLabel.Size = UDim2.new(0.9, 0, 0.75, 0)
+    copyBtnLabel.BackgroundTransparency = 1
+    copyBtnLabel.Text = "Copy Job ID"
+    copyBtnLabel.TextColor3 = Color3.fromRGB(255, 239, 60)
+    copyBtnLabel.FontFace = THEME.MainFontFace
+    copyBtnLabel.TextScaled = true
+    copyBtnLabel.Parent = copyBtn
+
+    local copyBtnLabelStroke = Instance.new("UIStroke")
+    copyBtnLabelStroke.Color = Color3.fromRGB(0, 0, 0)
+    copyBtnLabelStroke.Thickness = 1.2
+    copyBtnLabelStroke.Parent = copyBtnLabel
+
+    -- ปุ่ม Join Job ID
+    local joinBtn = Instance.new("TextButton")
+    joinBtn.Name = "JoinJobBtn"
+    joinBtn.AnchorPoint = Vector2.new(1, 0)
+    joinBtn.Position = UDim2.new(1, 0, 0, 0)
+    joinBtn.Size = UDim2.new(0.485, 0, 1, 0)
+    joinBtn.BackgroundColor3 = Color3.fromRGB(22, 42, 28)
+    joinBtn.BorderSizePixel = 0
+    joinBtn.AutoButtonColor = true
+    joinBtn.Text = ""
+    joinBtn.Parent = jobBtnRow
+
+    local joinBtnCorner = Instance.new("UICorner")
+    joinBtnCorner.CornerRadius = UDim.new(0.2, 0)
+    joinBtnCorner.Parent = joinBtn
+
+    local joinBtnStroke = Instance.new("UIStroke")
+    joinBtnStroke.Color = THEME.Success
+    joinBtnStroke.Thickness = 1.2
+    joinBtnStroke.Parent = joinBtn
+
+    local joinBtnLabel = Instance.new("TextLabel")
+    joinBtnLabel.Name = "Label"
+    joinBtnLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    joinBtnLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    joinBtnLabel.Size = UDim2.new(0.9, 0, 0.75, 0)
+    joinBtnLabel.BackgroundTransparency = 1
+    joinBtnLabel.Text = "Join Job ID"
+    joinBtnLabel.TextColor3 = Color3.fromRGB(150, 255, 120)
+    joinBtnLabel.FontFace = THEME.MainFontFace
+    joinBtnLabel.TextScaled = true
+    joinBtnLabel.Parent = joinBtn
+
+    local joinBtnLabelStroke = Instance.new("UIStroke")
+    joinBtnLabelStroke.Color = Color3.fromRGB(0, 0, 0)
+    joinBtnLabelStroke.Thickness = 1.2
+    joinBtnLabelStroke.Parent = joinBtnLabel
+
+    -- ------------------------------------------------------------------------------
+    -- (B) Card 2: Server Hop (Dropdown เลือก Full Moon / Mirage + ปุ่ม Hop Server)
+    -- ------------------------------------------------------------------------------
+    local hopCard = Instance.new("Frame")
+    hopCard.Name = "HopCard"
+    hopCard.AnchorPoint = Vector2.new(0.5, 0)
+    hopCard.Position = UDim2.new(0.5, 0, 0.45, 0)
+    hopCard.Size = UDim2.new(0.965, 0, 0.43, 0)
+    hopCard.BackgroundColor3 = THEME.CardBg
+    hopCard.BackgroundTransparency = 0.2
+    hopCard.BorderSizePixel = 0
+    hopCard.ZIndex = 5
+    hopCard.Parent = pageServer
+
+    local hopCardCorner = Instance.new("UICorner")
+    hopCardCorner.CornerRadius = UDim.new(0.07, 0)
+    hopCardCorner.Parent = hopCard
+
+    local hopCardStroke = Instance.new("UIStroke")
+    hopCardStroke.Color = Color3.fromRGB(0, 0, 0)
+    hopCardStroke.Thickness = 1
+    hopCardStroke.Parent = hopCard
+
+    local hopHeader = Instance.new("TextLabel")
+    hopHeader.Name = "HeaderLabel"
+    hopHeader.AnchorPoint = Vector2.new(0, 0.5)
+    hopHeader.Position = UDim2.new(0.04, 0, 0.16, 0)
+    hopHeader.Size = UDim2.new(0.92, 0, 0.22, 0)
+    hopHeader.BackgroundTransparency = 1
+    hopHeader.Text = "Server Hop Manager"
+    hopHeader.TextColor3 = Color3.fromRGB(255, 220, 60)
+    hopHeader.FontFace = THEME.MainFontFace
+    hopHeader.TextScaled = true
+    hopHeader.TextXAlignment = Enum.TextXAlignment.Left
+    hopHeader.ZIndex = 6
+    hopHeader.Parent = hopCard
+
+    local hopHeaderStroke = Instance.new("UIStroke")
+    hopHeaderStroke.Color = Color3.fromRGB(0, 0, 0)
+    hopHeaderStroke.Thickness = 1.2
+    hopHeaderStroke.Parent = hopHeader
+
+    -- แถวควบคุม: Dropdown และ Hop Action Button
+    local hopControlRow = Instance.new("Frame")
+    hopControlRow.Name = "ControlRow"
+    hopControlRow.AnchorPoint = Vector2.new(0.5, 0.5)
+    hopControlRow.Position = UDim2.new(0.5, 0, 0.50, 0)
+    hopControlRow.Size = UDim2.new(0.92, 0, 0.30, 0)
+    hopControlRow.BackgroundTransparency = 1
+    hopControlRow.BorderSizePixel = 0
+    hopControlRow.ZIndex = 6
+    hopControlRow.Parent = hopCard
+
+    -- ปุ่ม Dropdown เปิด/ปิดตัวเลือก
+    local dropdownBtn = Instance.new("TextButton")
+    dropdownBtn.Name = "DropdownBtn"
+    dropdownBtn.Position = UDim2.new(0, 0, 0, 0)
+    dropdownBtn.Size = UDim2.new(0.485, 0, 1, 0)
+    dropdownBtn.BackgroundColor3 = THEME.ContentBg
+    dropdownBtn.BorderSizePixel = 0
+    dropdownBtn.AutoButtonColor = true
+    dropdownBtn.Text = ""
+    dropdownBtn.ZIndex = 7
+    dropdownBtn.Parent = hopControlRow
+
+    local dropdownCorner = Instance.new("UICorner")
+    dropdownCorner.CornerRadius = UDim.new(0.2, 0)
+    dropdownCorner.Parent = dropdownBtn
+
+    local dropdownStroke = Instance.new("UIStroke")
+    dropdownStroke.Color = Color3.fromRGB(255, 199, 29)
+    dropdownStroke.Thickness = 1.2
+    dropdownStroke.Parent = dropdownBtn
+
+    local dropdownLabel = Instance.new("TextLabel")
+    dropdownLabel.Name = "Label"
+    dropdownLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    dropdownLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    dropdownLabel.Size = UDim2.new(0.9, 0, 0.75, 0)
+    dropdownLabel.BackgroundTransparency = 1
+    dropdownLabel.Text = "Full Moon  ▼"
+    dropdownLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    dropdownLabel.FontFace = THEME.MainFontFace
+    dropdownLabel.TextScaled = true
+    dropdownLabel.ZIndex = 8
+    dropdownLabel.Parent = dropdownBtn
+
+    local dropdownLabelStroke = Instance.new("UIStroke")
+    dropdownLabelStroke.Color = Color3.fromRGB(0, 0, 0)
+    dropdownLabelStroke.Thickness = 1.2
+    dropdownLabelStroke.Parent = dropdownLabel
+
+    -- ปุ่ม Hop Server
+    local hopActionBtn = Instance.new("TextButton")
+    hopActionBtn.Name = "HopActionBtn"
+    hopActionBtn.AnchorPoint = Vector2.new(1, 0)
+    hopActionBtn.Position = UDim2.new(1, 0, 0, 0)
+    hopActionBtn.Size = UDim2.new(0.485, 0, 1, 0)
+    hopActionBtn.BackgroundColor3 = Color3.fromRGB(48, 38, 20)
+    hopActionBtn.BorderSizePixel = 0
+    hopActionBtn.AutoButtonColor = true
+    hopActionBtn.Text = ""
+    hopActionBtn.ZIndex = 7
+    hopActionBtn.Parent = hopControlRow
+
+    local hopActionCorner = Instance.new("UICorner")
+    hopActionCorner.CornerRadius = UDim.new(0.2, 0)
+    hopActionCorner.Parent = hopActionBtn
+
+    local hopActionStroke = Instance.new("UIStroke")
+    hopActionStroke.Color = Color3.fromRGB(255, 199, 29)
+    hopActionStroke.Thickness = 1.5
+    hopActionStroke.Parent = hopActionBtn
+
+    local hopActionLabel = Instance.new("TextLabel")
+    hopActionLabel.Name = "Label"
+    hopActionLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    hopActionLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    hopActionLabel.Size = UDim2.new(0.9, 0, 0.75, 0)
+    hopActionLabel.BackgroundTransparency = 1
+    hopActionLabel.Text = "Hop Server"
+    hopActionLabel.TextColor3 = Color3.fromRGB(255, 220, 60)
+    hopActionLabel.FontFace = THEME.MainFontFace
+    hopActionLabel.TextScaled = true
+    hopActionLabel.ZIndex = 8
+    hopActionLabel.Parent = hopActionBtn
+
+    local hopActionLabelStroke = Instance.new("UIStroke")
+    hopActionLabelStroke.Color = Color3.fromRGB(0, 0, 0)
+    hopActionLabelStroke.Thickness = 1.2
+    hopActionLabelStroke.Parent = hopActionLabel
+
+    -- ข้อความบอกสถานะล่างปุ่ม Hop
+    local hopStatusLabel = Instance.new("TextLabel")
+    hopStatusLabel.Name = "StatusLabel"
+    hopStatusLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    hopStatusLabel.Position = UDim2.new(0.5, 0, 0.81, 0)
+    hopStatusLabel.Size = UDim2.new(0.92, 0, 0.20, 0)
+    hopStatusLabel.BackgroundTransparency = 1
+    hopStatusLabel.Text = "Select mode and click Hop Server"
+    hopStatusLabel.TextColor3 = Color3.fromRGB(160, 160, 170)
+    hopStatusLabel.FontFace = THEME.MainFontFace
+    hopStatusLabel.TextScaled = true
+    hopStatusLabel.ZIndex = 6
+    hopStatusLabel.Parent = hopCard
+
+    local hopStatusStroke = Instance.new("UIStroke")
+    hopStatusStroke.Color = Color3.fromRGB(0, 0, 0)
+    hopStatusStroke.Thickness = 1
+    hopStatusStroke.Parent = hopStatusLabel
+
+    -- Popup เมนู Dropdown รายการตัวเลือก
+    local dropdownList = Instance.new("Frame")
+    dropdownList.Name = "DropdownList"
+    dropdownList.Position = UDim2.new(0.04, 0, 0.67, 0)
+    dropdownList.Size = UDim2.new(0.446, 0, 0, 64)
+    dropdownList.BackgroundColor3 = Color3.fromRGB(20, 21, 26)
+    dropdownList.BorderSizePixel = 0
+    dropdownList.Visible = false
+    dropdownList.ZIndex = 30
+    dropdownList.Parent = hopCard
+
+    local dropdownListCorner = Instance.new("UICorner")
+    dropdownListCorner.CornerRadius = UDim.new(0.12, 0)
+    dropdownListCorner.Parent = dropdownList
+
+    local dropdownListStroke = Instance.new("UIStroke")
+    dropdownListStroke.Color = Color3.fromRGB(255, 199, 29)
+    dropdownListStroke.Thickness = 1.2
+    dropdownListStroke.Parent = dropdownList
+
+    local dropdownListLayout = Instance.new("UIListLayout")
+    dropdownListLayout.FillDirection = Enum.FillDirection.Vertical
+    dropdownListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    dropdownListLayout.Parent = dropdownList
+
+    -- ตัวเลือกใน Dropdown: Full Moon และ Mirage
+    local selectedHopMode = "Full Moon"
+    local isDropdownOpen = false
+
+    local function setDropdownState(open)
+        isDropdownOpen = open
+        dropdownList.Visible = open
+        dropdownLabel.Text = selectedHopMode .. (open and "  ▲" or "  ▼")
+    end
+
+    self.CloseDropdown = function()
+        setDropdownState(false)
+    end
+
+    dropdownBtn.Activated:Connect(function()
+        setDropdownState(not isDropdownOpen)
+    end)
+
+    local options = {
+        { Name = "Full Moon", Label = "Full Moon" },
+        { Name = "Mirage",    Label = "Mirage" }
+    }
+
+    for order, opt in ipairs(options) do
+        local optBtn = Instance.new("TextButton")
+        optBtn.Name = "Option_" .. opt.Name
+        optBtn.Size = UDim2.new(1, 0, 0.5, 0)
+        optBtn.BackgroundColor3 = Color3.fromRGB(20, 21, 26)
+        optBtn.BackgroundTransparency = 0.1
+        optBtn.BorderSizePixel = 0
+        optBtn.AutoButtonColor = false
+        optBtn.Text = opt.Label
+        optBtn.TextColor3 = Color3.fromRGB(220, 220, 230)
+        optBtn.FontFace = THEME.MainFontFace
+        optBtn.TextScaled = true
+        optBtn.ZIndex = 31
+        optBtn.LayoutOrder = order
+        optBtn.Parent = dropdownList
+
+        optBtn.MouseEnter:Connect(function()
+            optBtn.BackgroundColor3 = Color3.fromRGB(38, 40, 50)
+            optBtn.TextColor3 = Color3.fromRGB(255, 220, 60)
+        end)
+        optBtn.MouseLeave:Connect(function()
+            optBtn.BackgroundColor3 = Color3.fromRGB(20, 21, 26)
+            optBtn.TextColor3 = Color3.fromRGB(220, 220, 230)
+        end)
+
+        optBtn.Activated:Connect(function()
+            selectedHopMode = opt.Name
+            setDropdownState(false)
+            hopStatusLabel.Text = "Target set to: " .. opt.Label
+        end)
+    end
+
+    -- Event สำหรับ Copy Job ID
+    copyBtn.Activated:Connect(function()
+        local textToCopy = jobIdInput.Text
+        if not textToCopy or #textToCopy == 0 then
+            textToCopy = tostring(game.JobId or "")
+        end
+        local ok = pcall(function()
+            if typeof(setclipboard) == "function" then
+                setclipboard(textToCopy)
+            elseif typeof(toclipboard) == "function" then
+                toclipboard(textToCopy)
+            end
+        end)
+        copyBtnLabel.Text = ok and "✓ Copied!" or "Copy Failed"
+        task.delay(1.5, function()
+            if copyBtnLabel and copyBtnLabel.Parent then
+                copyBtnLabel.Text = "Copy Job ID"
+            end
+        end)
+    end)
+
+    -- Event สำหรับ Join Job ID
+    joinBtn.Activated:Connect(function()
+        local rawText = jobIdInput.Text or ""
+        local cleanJob = rawText:gsub("%s+", "")
+        if #cleanJob == 0 then
+            cleanJob = tostring(game.JobId or "")
+        end
+        if self.HopCallbacks and typeof(self.HopCallbacks.OnJoinJobId) == "function" then
+            self.HopCallbacks.OnJoinJobId(cleanJob)
+        else
+            pcall(function()
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, cleanJob, LocalPlayer)
+            end)
+        end
+    end)
+
+    -- Event สำหรับ Hop Action Button
+    hopActionBtn.Activated:Connect(function()
+        setDropdownState(false)
+        hopStatusLabel.Text = "Hopping to " .. selectedHopMode .. "..."
+        if selectedHopMode == "Full Moon" then
+            if self.HopCallbacks and typeof(self.HopCallbacks.OnHopFullMoon) == "function" then
+                self.HopCallbacks.OnHopFullMoon()
+            else
+                hopStatusLabel.Text = "Hop Full Moon callback not ready"
+            end
+        elseif selectedHopMode == "Mirage" then
+            if self.HopCallbacks and typeof(self.HopCallbacks.OnHopMirage) == "function" then
+                self.HopCallbacks.OnHopMirage()
+            else
+                hopStatusLabel.Text = "Hop Mirage callback not ready"
+            end
+        end
+    end)
+
+    -- ==============================================================================
     -- 6. แถบ Footer (ถอดแบบจาก StatsRoot 1:1, Fragments สีม่วง ƒ, ไม่มีปุ่ม Close)
     -- ==============================================================================
     local footer = Instance.new("Frame")
@@ -519,6 +993,7 @@ function UIManager.new(customParent)
     footer.BackgroundColor3 = THEME.FooterBg
     footer.BackgroundTransparency = 0.1
     footer.BorderSizePixel = 0
+    footer.ZIndex = 10
     footer.Parent = content
 
     local footerStroke = Instance.new("UIStroke")
@@ -538,6 +1013,7 @@ function UIManager.new(customParent)
     fragLabel.FontFace = THEME.MainFontFace
     fragLabel.TextScaled = true
     fragLabel.TextXAlignment = Enum.TextXAlignment.Left
+    fragLabel.ZIndex = 11
     fragLabel.Parent = footer
 
     local fragStroke = Instance.new("UIStroke")
@@ -557,12 +1033,121 @@ function UIManager.new(customParent)
     hintLabel.FontFace = THEME.MainFontFace
     hintLabel.TextScaled = true
     hintLabel.TextXAlignment = Enum.TextXAlignment.Right
+    hintLabel.ZIndex = 11
     hintLabel.Parent = footer
 
     local hintStroke = Instance.new("UIStroke")
     hintStroke.Color = Color3.fromRGB(0, 0, 0)
     hintStroke.Thickness = 1.2
     hintStroke.Parent = hintLabel
+
+    -- ==============================================================================
+    -- 7. ปุ่ม Navigation Arrow ซ้าย-ขวา กึ่งกลางแกน Y ขนาบข้างกรอบ Menu
+    -- ==============================================================================
+    local leftArrowBtn = Instance.new("TextButton")
+    leftArrowBtn.Name = "LeftArrowBtn"
+    leftArrowBtn.AnchorPoint = Vector2.new(1, 0.5)
+    leftArrowBtn.Position = UDim2.new(0, -12, 0.5, 0)
+    leftArrowBtn.Size = UDim2.new(0, 36, 0, 58)
+    leftArrowBtn.BackgroundColor3 = THEME.ContentBg
+    leftArrowBtn.BackgroundTransparency = 0.15
+    leftArrowBtn.BorderSizePixel = 0
+    leftArrowBtn.AutoButtonColor = true
+    leftArrowBtn.Text = ""
+    leftArrowBtn.ZIndex = 15
+    leftArrowBtn.Parent = menu
+
+    local leftArrowCorner = Instance.new("UICorner")
+    leftArrowCorner.CornerRadius = UDim.new(0.25, 0)
+    leftArrowCorner.Parent = leftArrowBtn
+
+    local leftArrowStroke = Instance.new("UIStroke")
+    leftArrowStroke.Color = Color3.fromRGB(255, 199, 29)
+    leftArrowStroke.Thickness = 1.5
+    leftArrowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    leftArrowStroke.Parent = leftArrowBtn
+
+    local leftArrowLabel = Instance.new("TextLabel")
+    leftArrowLabel.Name = "Icon"
+    leftArrowLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    leftArrowLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    leftArrowLabel.Size = UDim2.new(0.8, 0, 0.8, 0)
+    leftArrowLabel.BackgroundTransparency = 1
+    leftArrowLabel.Text = "<"
+    leftArrowLabel.TextColor3 = Color3.fromRGB(255, 239, 60)
+    leftArrowLabel.FontFace = THEME.MainFontFace
+    leftArrowLabel.TextScaled = true
+    leftArrowLabel.ZIndex = 16
+    leftArrowLabel.Parent = leftArrowBtn
+
+    local leftArrowTextStroke = Instance.new("UIStroke")
+    leftArrowTextStroke.Color = Color3.fromRGB(0, 0, 0)
+    leftArrowTextStroke.Thickness = 1.5
+    leftArrowTextStroke.Parent = leftArrowLabel
+
+    -- ปุ่มขวา (Next Arrow '>')
+    local rightArrowBtn = Instance.new("TextButton")
+    rightArrowBtn.Name = "RightArrowBtn"
+    rightArrowBtn.AnchorPoint = Vector2.new(0, 0.5)
+    rightArrowBtn.Position = UDim2.new(1, 12, 0.5, 0)
+    rightArrowBtn.Size = UDim2.new(0, 36, 0, 58)
+    rightArrowBtn.BackgroundColor3 = THEME.ContentBg
+    rightArrowBtn.BackgroundTransparency = 0.15
+    rightArrowBtn.BorderSizePixel = 0
+    rightArrowBtn.AutoButtonColor = true
+    rightArrowBtn.Text = ""
+    rightArrowBtn.ZIndex = 15
+    rightArrowBtn.Parent = menu
+
+    local rightArrowCorner = Instance.new("UICorner")
+    rightArrowCorner.CornerRadius = UDim.new(0.25, 0)
+    rightArrowCorner.Parent = rightArrowBtn
+
+    local rightArrowStroke = Instance.new("UIStroke")
+    rightArrowStroke.Color = Color3.fromRGB(255, 199, 29)
+    rightArrowStroke.Thickness = 1.5
+    rightArrowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    rightArrowStroke.Parent = rightArrowBtn
+
+    local rightArrowLabel = Instance.new("TextLabel")
+    rightArrowLabel.Name = "Icon"
+    rightArrowLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    rightArrowLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    rightArrowLabel.Size = UDim2.new(0.8, 0, 0.8, 0)
+    rightArrowLabel.BackgroundTransparency = 1
+    rightArrowLabel.Text = ">"
+    rightArrowLabel.TextColor3 = Color3.fromRGB(255, 239, 60)
+    rightArrowLabel.FontFace = THEME.MainFontFace
+    rightArrowLabel.TextScaled = true
+    rightArrowLabel.ZIndex = 16
+    rightArrowLabel.Parent = rightArrowBtn
+
+    local rightArrowTextStroke = Instance.new("UIStroke")
+    rightArrowTextStroke.Color = Color3.fromRGB(0, 0, 0)
+    rightArrowTextStroke.Thickness = 1.5
+    rightArrowTextStroke.Parent = rightArrowLabel
+
+    -- Hover effect สำหรับปุ่ม Arrow
+    local function setupArrowHover(btn, stroke)
+        btn.MouseEnter:Connect(function()
+            stroke.Color = Color3.fromRGB(255, 255, 130)
+            btn.BackgroundColor3 = Color3.fromRGB(35, 36, 45)
+        end)
+        btn.MouseLeave:Connect(function()
+            stroke.Color = Color3.fromRGB(255, 199, 29)
+            btn.BackgroundColor3 = THEME.ContentBg
+        end)
+    end
+    setupArrowHover(leftArrowBtn, leftArrowStroke)
+    setupArrowHover(rightArrowBtn, rightArrowStroke)
+
+    leftArrowBtn.Activated:Connect(function()
+        self:PrevPage()
+    end)
+
+    rightArrowBtn.Activated:Connect(function()
+        self:NextPage()
+    end)
 
     -- แนบ ScreenGui เข้าสู่เป้าหมาย
     screenGui.Parent = parentTarget
@@ -573,7 +1158,10 @@ function UIManager.new(customParent)
     self.ToggleButton = toggleBtn
     self.Menu = menu
     self.TitleFrame = titleFrame
+    self.TitleMain = titleMain
+    self.TitleShadow = titleShadow
     self.ContentFrame = content
+    self.PagesContainer = pagesContainer
     self.FooterFrame = footer
     self.UserLabel = userLabel
     self.RaceLabel = raceLabel
@@ -583,6 +1171,27 @@ function UIManager.new(customParent)
     self.MirrorItem = mirrorItem
     self.ValkItem = valkItem
     self.LeverItem = leverItem
+
+    self.LeftArrowBtn = leftArrowBtn
+    self.RightArrowBtn = rightArrowBtn
+    self.JobIdInput = jobIdInput
+    self.HopStatusLabel = hopStatusLabel
+    self.HopCallbacks = {}
+
+    -- ระบบจัดการหน้า
+    self.Pages = {
+        {
+            Name = "Dashboard",
+            Title = "Dashboard",
+            Frame = pageDashboard
+        },
+        {
+            Name = "ServerManager",
+            Title = "Server Manager",
+            Frame = pageServer
+        }
+    }
+    self.CurrentPageIndex = 1
 
     -- Backwards Compatibility References
     self.MirrorLabel = mirrorItem.Card
@@ -693,6 +1302,122 @@ function UIManager:Destroy()
     if self.ScreenGui then
         self.ScreenGui:Destroy()
         self.ScreenGui = nil
+    end
+end
+
+-- ==============================================================================
+-- ระบบจัดการหน้า (Multi-Page Navigation Methods)
+-- ==============================================================================
+
+-- เปลี่ยนไปยังหน้าที่ระบุ (index หรือ ชื่อหน้า)
+function UIManager:SetPage(target)
+    local targetIndex = nil
+    if type(target) == "number" then
+        if target >= 1 and target <= #self.Pages then
+            targetIndex = target
+        end
+    elseif type(target) == "string" then
+        for i, page in ipairs(self.Pages) do
+            if page.Name == target or page.Title == target then
+                targetIndex = i
+                break
+            end
+        end
+    end
+
+    if not targetIndex or targetIndex == self.CurrentPageIndex then
+        return
+    end
+
+    local oldPage = self.Pages[self.CurrentPageIndex]
+    local newPage = self.Pages[targetIndex]
+
+    if oldPage and oldPage.Frame then
+        oldPage.Frame.Visible = false
+    end
+    if newPage and newPage.Frame then
+        newPage.Frame.Visible = true
+    end
+
+    self.CurrentPageIndex = targetIndex
+
+    -- อัปเดตข้อความ Title ด้านบน
+    if self.TitleMain and self.TitleShadow then
+        local pageTitle = newPage.Title or newPage.Name or "Dashboard"
+        self.TitleMain.Text = pageTitle
+        self.TitleShadow.Text = pageTitle
+    end
+
+    -- ปิดเมนู Dropdown หากเปิดค้างไว้
+    if self.CloseDropdown then
+        self.CloseDropdown()
+    end
+end
+
+-- เลื่อนไปหน้าถัดไป (วนลูปกลับมาหน้าแรกเมื่อถึงหน้าสุดท้าย)
+function UIManager:NextPage()
+    if not self.Pages or #self.Pages <= 1 then return end
+    local nextIdx = (self.CurrentPageIndex % #self.Pages) + 1
+    self:SetPage(nextIdx)
+end
+
+-- เลื่อนไปหน้าก่อนหน้า (วนลูปไปหน้าสุดท้ายเมื่ออยู่หน้าแรก)
+function UIManager:PrevPage()
+    if not self.Pages or #self.Pages <= 1 then return end
+    local prevIdx = self.CurrentPageIndex - 1
+    if prevIdx < 1 then prevIdx = #self.Pages end
+    self:SetPage(prevIdx)
+end
+
+-- ดึงข้อมูลหน้าปัจจุบัน (index, pageData)
+function UIManager:GetActivePage()
+    return self.CurrentPageIndex, self.Pages and self.Pages[self.CurrentPageIndex]
+end
+
+-- สร้างหน้าใหม่และส่งคืน Frame สำหรับใส่ Widgets เพิ่มเติม
+function UIManager:CreatePage(configOrName)
+    local pageName, pageTitle
+    if type(configOrName) == "table" then
+        pageName = configOrName.Name or ("Page_" .. tostring(#self.Pages + 1))
+        pageTitle = configOrName.Title or pageName
+    else
+        pageName = tostring(configOrName or ("Page_" .. tostring(#self.Pages + 1)))
+        pageTitle = pageName
+    end
+
+    local pageFrame = Instance.new("Frame")
+    pageFrame.Name = "Page_" .. pageName
+    pageFrame.Size = UDim2.new(1, 0, 1, 0)
+    pageFrame.Position = UDim2.new(0, 0, 0, 0)
+    pageFrame.BackgroundTransparency = 1
+    pageFrame.BorderSizePixel = 0
+    pageFrame.Visible = false
+    pageFrame.Parent = self.PagesContainer
+
+    local pageEntry = {
+        Name = pageName,
+        Title = pageTitle,
+        Frame = pageFrame
+    }
+    table.insert(self.Pages, pageEntry)
+
+    -- อัปเดตการแสดงผลของปุ่ม Navigation Arrow
+    if self.LeftArrowBtn and self.RightArrowBtn then
+        local hasMultiple = #self.Pages > 1
+        self.LeftArrowBtn.Visible = hasMultiple
+        self.RightArrowBtn.Visible = hasMultiple
+    end
+
+    return pageFrame
+end
+
+-- กำหนด Callbacks สำหรับการ Hop และ Join Job ID
+function UIManager:SetHopCallbacks(callbacks)
+    if type(callbacks) == "table" then
+        self.HopCallbacks = self.HopCallbacks or {}
+        for k, v in pairs(callbacks) do
+            self.HopCallbacks[k] = v
+        end
     end
 end
 
