@@ -589,12 +589,12 @@ function UIManager.new(customParent)
     jobIdInput.AnchorPoint = Vector2.new(0.5, 0.5)
     jobIdInput.Position = UDim2.new(0.5, 0, 0.47, 0)
     jobIdInput.Size = UDim2.new(0.92, 0, 0.28, 0)
-    jobIdInput.BackgroundColor3 = THEME.ContentBg
-    jobIdInput.BackgroundTransparency = 0.1
+    jobIdInput.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
+    jobIdInput.BackgroundTransparency = 0
     jobIdInput.BorderSizePixel = 0
     jobIdInput.Text = tostring(game.JobId or "")
     jobIdInput.PlaceholderText = "Paste or enter Job ID here..."
-    jobIdInput.PlaceholderColor3 = Color3.fromRGB(130, 130, 140)
+    jobIdInput.PlaceholderColor3 = Color3.fromRGB(150, 155, 175)
     jobIdInput.TextColor3 = Color3.fromRGB(255, 255, 255)
     jobIdInput.FontFace = THEME.MainFontFace
     jobIdInput.TextScaled = true
@@ -606,9 +606,24 @@ function UIManager.new(customParent)
     jobIdInputCorner.Parent = jobIdInput
 
     local jobIdInputStroke = Instance.new("UIStroke")
-    jobIdInputStroke.Color = Color3.fromRGB(75, 75, 85)
+    jobIdInputStroke.Color = Color3.fromRGB(90, 95, 120)
     jobIdInputStroke.Thickness = 1.2
     jobIdInputStroke.Parent = jobIdInput
+
+    local jobIdPadding = Instance.new("UIPadding")
+    jobIdPadding.PaddingLeft = UDim.new(0.03, 0)
+    jobIdPadding.PaddingRight = UDim.new(0.03, 0)
+    jobIdPadding.Parent = jobIdInput
+
+    -- ไฮไลท์เมื่อผู้เล่นกด Focus เข้าไปพิมพ์ในกล่อง
+    jobIdInput.Focused:Connect(function()
+        jobIdInput.BackgroundColor3 = Color3.fromRGB(36, 42, 58)
+        jobIdInputStroke.Color = Color3.fromRGB(255, 199, 29)
+    end)
+    jobIdInput.FocusLost:Connect(function()
+        jobIdInput.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
+        jobIdInputStroke.Color = Color3.fromRGB(90, 95, 120)
+    end)
 
     -- แถวปุ่ม (Copy Job ID & Join Job ID)
     local jobBtnRow = Instance.new("Frame")
